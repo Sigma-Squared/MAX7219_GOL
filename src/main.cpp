@@ -8,15 +8,16 @@
 
 LedControl lc = LedControl(DIN, CLK, CS, 1);
 
+// 282 iteration long initial pattern
 bool matrix[8][8] = {
-    {0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 1, 0},
-    {0, 0, 0, 0, 0, 1, 0, 0},
-    {0, 0, 0, 0, 0, 1, 0, 0},
-    {0, 1, 1, 1, 0, 1, 0, 0},
-    {0, 0, 0, 0, 0, 1, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 1, 1, 1, 0, 0, 0},
+    {1, 0, 0, 0, 0, 0, 0, 0},
+    {1, 0, 1, 0, 0, 1, 0, 0},
+    {1, 0, 0, 1, 1, 1, 1, 0},
+    {0, 0, 1, 0, 0, 1, 1, 0},
+    {1, 1, 0, 1, 0, 1, 0, 1},
+    {0, 0, 1, 0, 0, 0, 1, 0},
+    {0, 1, 0, 0, 0, 1, 0, 1},
 };
 
 bool backbuf[8][8] = {{0}};
@@ -32,6 +33,7 @@ void randomize()
       matrix[i][j] = random(2);
     }
   }
+  memcpy(backbuf, matrix, 8 * 8 * sizeof(bool));
 }
 
 bool get(int i, int j)
@@ -54,18 +56,6 @@ bool get(int i, int j)
   return matrix[j][i];
 }
 
-void volatileCopy(volatile bool (*from)[8], volatile bool (*to)[8])
-{
-  memcpy(matrix, backbuf, 8 * 8 * sizeof(bool));
-  for (int i = 0; i < 8; i++)
-  {
-    for (int j = 0; j < 8; j++)
-    {
-      to[i][j] = from[i][j];
-    }
-  }
-}
-
 void GOL()
 {
   for (int j = 0; j < 8; j++)
@@ -73,27 +63,20 @@ void GOL()
     for (int i = 0; i < 8; i++)
     {
       int neighbors = get(i - 1, j) + get(i + 1, j) + get(i, j - 1) + get(i, j + 1) + get(i - 1, j - 1) + get(i + 1, j + 1) + get(i - 1, j + 1) + get(i + 1, j - 1);
-      if (get(i, j))
+      if (neighbors < 2)
       {
-        if (neighbors < 2)
-        {
-          backbuf[j][i] = 0;
-        }
-        else if (neighbors > 3)
-        {
-          backbuf[j][i] = 0;
-        }
+        backbuf[j][i] = 0;
       }
-      else
+      else if (neighbors > 3)
       {
-        if (neighbors == 3)
-        {
-          backbuf[j][i] = 1;
-        }
+        backbuf[j][i] = 0;
+      }
+      else if (neighbors == 3)
+      {
+        backbuf[j][i] = 1;
       }
     }
   }
-  //volatileCopy(backbuf, matrix);
   memcpy(matrix, backbuf, 8 * 8 * sizeof(bool));
 }
 
@@ -113,7 +96,6 @@ void setup()
   randomize();
 #endif
 
-  //volatileCopy(matrix, backbuf);
   memcpy(backbuf, matrix, 8 * 8 * sizeof(bool));
 
   attachInterrupt(digitalPinToInterrupt(2), button_ISR, RISING);
@@ -130,7 +112,7 @@ void loop()
   {
     for (int i = 0; i < 8; i++)
     {
-      lc.setLed(0, i, 7 - j, get(i, j));
+      lc.setLed(0, i, j, get(i, j));
     }
   }
   delay(DELAY);
